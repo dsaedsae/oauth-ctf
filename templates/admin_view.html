@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Admin View - Entry Review{% endblock %}
+
+{% block content %}
+<h1>👑 Admin Review Panel</h1>
+
+<div class="alert alert-success">
+    <h3>🔑 Admin Session Active</h3>
+    <p>You are viewing this page as an administrator with elevated privileges.</p>
+    <p><strong>Admin Token:</strong> <code>{{ admin_session.admin_token }}</code></p>
+</div>
+
+<!-- Entry Details -->
+<div class="stage-card">
+    <h3>📝 Guestbook Entry Review</h3>
+    <div style="border: 1px solid #ddd; padding: 15px; border-radius: 5px; background: #f9f9f9;">
+        <h4>Entry ID: {{ entry.id }}</h4>
+        <p><strong>Name:</strong> {{ entry.name|safe }}</p>
+        <p><strong>Timestamp:</strong> {{ entry.timestamp }}</p>
+        <p><strong>IP Address:</strong> {{ entry.ip }}</p>
+
+        <div style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 5px; margin: 10px 0;">
+            <h5>Message Content:</h5>
+            <!-- VULNERABILITY: Direct HTML rendering without sanitization -->
+            <div id="messageContent">{{ entry.message|safe }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Actions -->
+<div class="stage-card">
+    <h3>⚙️ Admin Actions</h3>
+    <button onclick="approveEntry()" class="btn">✅ Approve Entry</button>
+    <button onclick="rejectEntry()" class="btn btn-danger">❌ Reject Entry</button>
+    <button onclick="flagAsSpam()" class="btn btn-danger">🚩 Flag as Spam</button>
+</div>
+
+<!-- Admin Session Info -->
+<div class="stage-card">
+    <h3>🔐 Admin Session Information</h3>
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace;">
+        <p><strong>Admin User:</strong> {{ admin_session.admin_user }}</p>
+        <p><strong>Session Token:</strong> {{ admin_session.admin_token }}</p>
+        <p><strong>Privileges:</strong> {{ admin_session.privileges|join(', ') }}</p>
+        <p><strong>Current URL:</strong> <span id="currentUrl"></span></p>
+        <p><strong>Local Storage:</strong> <span id="localStorage"></span></p>
+        <p><strong>Cookies:</strong> <span id="cookieInfo"></span></p>
+    </div>
+</div>
+
+<!-- Vulnerability Notice -->
+<div class="vulnerability">
+    <h3>⚠️ Security Warning</h3>
+    <p>This admin panel is vulnerable to XSS attacks through unsanitized guestbook entries!</p>
+    <p>Any JavaScript code in the message content will execute with admin privileges.</p>
+</div>
+
+<script>
+// Display current page information
+document.getElementById('currentUrl').textContent = window.location.href;
+document.getElementById('localStorage').textContent = JSON.stringify(localStorage);
+document.getElementById('cookieInfo').textContent = document.cookie;
+
+// Admin actions
+function approveEntry() {
+    alert('Entry approved by admin');
+    console.log('Admin action: Entry approved');
+}
+
+function rejectEntry() {
+    alert('Entry rejected by admin');
+    console.log('Admin action: Entry rejected');
+}
+
+function flagAsSpam() {
+    alert('Entry flagged as spam by admin');
+    console.log('Admin action: Entry flagged as spam');
+}
+
+// Simulate admin being logged in
+localStorage.setItem('admin_token', '{{ admin_session.admin_token }}');
+localStorage.setItem('admin_user', '{{ admin_session.admin_user }}');
+
+// Log admin session for XSS exploitation
+console.log('Admin session active:', {
+    token: '{{ admin_session.admin_token }}',
+    user: '{{ admin_session.admin_user }}',
+    privileges: {{ admin_session.privileges | tojson }}
+});
+
+// This is where XSS payloads would execute when admin views malicious entries
+// The messageContent div renders user input without sanitization
+console.log('Admin viewing entry:', document.getElementById('messageContent').innerHTML);
+</script>
+{% endblock %}

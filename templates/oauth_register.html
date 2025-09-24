@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}OAuth Client Registration - Stage 1{% endblock %}
+
+{% block content %}
+<h1>🔐 OAuth Client Registration - Stage 1</h1>
+
+<div class="vulnerability">
+    <h3>⚠️ SSRF Vulnerability</h3>
+    <p>This OAuth registration endpoint fetches logo_uri without validation!</p>
+    <p><strong>Objective:</strong> Use SSRF to access internal services</p>
+</div>
+
+<!-- Registration Form -->
+<div class="stage-card">
+    <h3>📝 Register OAuth Client</h3>
+    <form id="registerForm">
+        <label for="client_name">Client Name:</label>
+        <input type="text" id="client_name" name="client_name" required placeholder="My OAuth App">
+
+        <label for="redirect_uris">Redirect URI:</label>
+        <input type="url" id="redirect_uris" name="redirect_uris" required placeholder="http://localhost:3000/callback">
+
+        <label for="logo_uri">Logo URI (Vulnerable to SSRF):</label>
+        <input type="url" id="logo_uri" name="logo_uri" placeholder="http://169.254.169.254/latest/meta-data/">
+
+        <button type="submit" class="btn">Register Client</button>
+    </form>
+</div>
+
+<!-- SSRF Examples -->
+<div class="vulnerability">
+    <h3>🎯 SSRF Target Examples</h3>
+    <p>Try these internal endpoints:</p>
+    <ul>
+        <li><strong>AWS Metadata:</strong> <code>http://169.254.169.254/latest/meta-data/</code></li>
+        <li><strong>Local Services:</strong> <code>http://localhost:6379/</code> (Redis)</li>
+        <li><strong>Internal Network:</strong> <code>http://172.17.0.1:8080/</code></li>
+        <li><strong>File System:</strong> <code>file:///etc/passwd</code></li>
+    </ul>
+    <button onclick="loadSSRFPayload()" class="btn btn-danger">Load SSRF Payload</button>
+</div>
+
+<!-- Registration Result -->
+<div id="registrationResult" style="display: none;" class="stage-card">
+    <h3>✅ Registration Result</h3>
+    <div id="resultContent"></div>
+</div>
+
+<!-- SSRF Response -->
+<div id="ssrfResult" style="display: none;" class="vulnerability">
+    <h3>🔍 SSRF Response</h3>
+    <div id="ssrfContent"></div>
+</div>
+
+<script>
+function loadSSRFPayload() {
+    document.getElementById('client_name').value = 'SSRF Test Client';
+    document.getElementById('redirect_uris').value = 'http://localhost:3000/callback';
+    document.getElementById('logo_uri').value = 'http://169.254.169.254/latest/meta-data/';
+    alert('SSRF payload loaded! This will attempt to access AWS metadata service.');
+}
+
+document.getElementById('registerForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await fetch('/oauth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        // Display registration result
+        document.getElementById('registrationResult').style.display = 'block';
+        document.getElementById('resultContent').innerHTML = `
+            <p><strong>Client ID:</strong> <code>${result.client_id}</code></p>
+            <p><strong>Client Secret:</strong> <code>${result.client_secret}</code></p>
+            <p><strong>Registration Token:</strong> <code>${result.registration_access_token}</code></p>
+            ${result.flag_stage1 ? `<div class="flag">🚩 FLAG: ${result.flag_stage1}</div>` : ''}
+        `;
+
+        // Display SSRF result if available
+        if (result.metadata) {
+            document.getElementById('ssrfResult').style.display = 'block';
+            document.getElementById('ssrfContent').innerHTML = `
+                <p><strong>Status Code:</strong> ${result.metadata.status_code || 'N/A'}</p>
+                <p><strong>Response:</strong></p>
+                <pre style="background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto;">${JSON.stringify(result.metadata, null, 2)}</pre>
+                ${result.metadata.error ? '' : '<p class="alert alert-danger">🎯 SSRF successful! Internal service accessed.</p>'}
+            `;
+        }
+
+        // Store client credentials for next stages
+        sessionStorage.setItem('oauth_client_id', result.client_id);
+        sessionStorage.setItem('oauth_client_secret', result.client_secret);
+
+        if (result.flag_stage1) {
+            alert('🎉 Stage 1 completed! SSRF vulnerability exploited successfully!');
+        }
+
+    } catch (error) {
+        alert('Registration failed: ' + error.message);
+    }
+});
+
+// Auto-generate test data
+window.addEventListener('load', function() {
+    if (!document.getElementById('client_name').value) {
+        document.getElementById('client_name').value = 'OAuth CTF Test Client';
+        document.getElementById('redirect_uris').value = 'http://localhost:3000/callback';
+    }
+});
+</script>
+{% endblock %}

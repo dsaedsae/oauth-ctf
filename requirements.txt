@@ -1,0 +1,31 @@
+# OAuth CTF Challenge Dependencies
+
+# Web Framework
+Flask==2.3.3
+Flask-CORS==4.0.0
+
+# Authentication & Security
+PyJWT==2.8.0
+cryptography==41.0.7
+
+# HTTP Requests
+requests==2.31.0
+
+# Data Storage
+redis==5.0.1
+
+# HTML/XML Processing
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Admin Bot Dependencies
+selenium==4.15.0
+
+# Development & Debugging
+python-dotenv==1.0.0
+
+# Optional: For better JSON handling
+simplejson==3.19.2
+
+# Optional: For improved performance
+gunicorn==21.2.0

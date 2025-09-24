@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"  # Only expose single port!
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=vulnerable_key_for_ctf
+      - FLAG=CTF{oauth_chain_master_2025}
+    depends_on:
+      - redis
+    networks:
+      - ctf-network
+
+  redis:
+    image: redis:alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - ctf-network
+    # No ports exposed! Only internal access
+
+networks:
+  ctf-network:
+    driver: bridge
+
+volumes:
+  redis-data:

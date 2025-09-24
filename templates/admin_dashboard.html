@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Stage 5{% endblock %}
+
+{% block content %}
+<h1>👑 Admin Dashboard - Stage 5</h1>
+
+<div class="alert alert-success">
+    <h3>🎉 Congratulations!</h3>
+    <p>You have successfully accessed the admin dashboard and completed all 5 stages of the OAuth CTF challenge!</p>
+</div>
+
+<!-- Final Flag -->
+<div class="stage-card">
+    <h3>🏆 Final Flag</h3>
+    <div class="flag">{{ final_flag }}</div>
+</div>
+
+<!-- Admin Information -->
+<div class="stage-card">
+    <h3>🔐 Admin Secrets</h3>
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+        <h4>User Management:</h4>
+        <ul>
+            {% for user in admin_secrets.users %}
+                <li>{{ user }}</li>
+            {% endfor %}
+        </ul>
+
+        <h4>System Information:</h4>
+        <ul>
+            <li><strong>Version:</strong> {{ admin_secrets.system_info.version }}</li>
+            <li><strong>Environment:</strong> {{ admin_secrets.system_info.environment }}</li>
+            <li><strong>Secrets Count:</strong> {{ admin_secrets.system_info.secrets_count }}</li>
+        </ul>
+
+        <h4>All Flags Collected:</h4>
+        <ul>
+            {% for stage, flag in admin_secrets.flags.items() %}
+                <li><strong>{{ stage.title() }}:</strong> <code>{{ flag }}</code></li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<!-- Attack Summary -->
+<div class="stage-card">
+    <h3>📋 Attack Chain Summary</h3>
+    <div style="background: #e8f5e8; padding: 15px; border-radius: 5px;">
+        <h4>You successfully completed:</h4>
+        <ol>
+            <li><strong>SSRF Attack:</strong> Exploited OAuth client registration to access internal services</li>
+            <li><strong>XSS Injection:</strong> Planted malicious scripts in guestbook to steal admin session</li>
+            <li><strong>PKCE Bypass:</strong> Downgraded PKCE protection and escalated token privileges</li>
+            <li><strong>GraphQL Introspection:</strong> Discovered admin schema and endpoints</li>
+            <li><strong>Admin Takeover:</strong> Gained unauthorized access to admin dashboard</li>
+        </ol>
+    </div>
+</div>
+
+<!-- Security Lessons -->
+<div class="stage-card">
+    <h3>🎓 Security Lessons Learned</h3>
+    <div style="background: #fff3cd; padding: 15px; border-radius: 5px;">
+        <h4>Vulnerabilities Exploited:</h4>
+        <ul>
+            <li><strong>Server-Side Request Forgery (SSRF):</strong> Always validate and sanitize URLs</li>
+            <li><strong>Cross-Site Scripting (XSS):</strong> Implement proper input sanitization</li>
+            <li><strong>PKCE Downgrade:</strong> Enforce strong PKCE methods (S256 only)</li>
+            <li><strong>GraphQL Introspection:</strong> Disable introspection in production</li>
+            <li><strong>Privilege Escalation:</strong> Implement proper scope validation</li>
+        </ul>
+
+        <h4>Defense Recommendations:</h4>
+        <ul>
+            <li>Implement URL whitelisting for external requests</li>
+            <li>Use Content Security Policy (CSP) headers</li>
+            <li>Enforce PKCE S256 method only</li>
+            <li>Disable GraphQL introspection in production</li>
+            <li>Implement proper authentication and authorization</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Admin Actions -->
+<div class="stage-card">
+    <h3>⚙️ Admin Actions</h3>
+    <button onclick="downloadReport()" class="btn">Download Security Report</button>
+    <button onclick="resetChallenge()" class="btn btn-danger">Reset Challenge</button>
+    <a href="/" class="btn">Return to Home</a>
+</div>
+
+<script>
+function downloadReport() {
+    const report = {
+        challenge: 'OAuth CTF Challenge',
+        completion_date: new Date().toISOString(),
+        final_flag: '{{ final_flag }}',
+        all_flags: {{ admin_secrets.flags | tojson }},
+        vulnerabilities_exploited: [
+            'SSRF via OAuth client registration',
+            'XSS in guestbook system',
+            'PKCE bypass and scope escalation',
+            'GraphQL introspection',
+            'Admin privilege escalation'
+        ],
+        recommendations: [
+            'Implement URL validation and whitelisting',
+            'Use proper input sanitization and CSP',
+            'Enforce PKCE S256 method only',
+            'Disable GraphQL introspection in production',
+            'Implement strong authentication and authorization'
+        ]
+    };
+
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'oauth_ctf_completion_report.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function resetChallenge() {
+    if (confirm('Are you sure you want to reset your progress? This will clear all completed stages.')) {
+        window.location.href = '/reset';
+    }
+}
+
+// Celebration animation
+window.addEventListener('load', function() {
+    setTimeout(() => {
+        document.body.style.background = 'linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #dda0dd)';
+        document.body.style.backgroundSize = '400% 400%';
+        document.body.style.animation = 'gradient 5s ease infinite';
+
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes gradient {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+            }
+        `;
+        document.head.appendChild(style);
+    }, 1000);
+});
+</script>
+{% endblock %}

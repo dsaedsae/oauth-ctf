@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}GraphQL Explorer - Stage 4{% endblock %}
+
+{% block content %}
+<h1>📊 GraphQL API Explorer - Stage 4</h1>
+
+<div class="vulnerability">
+    <h3>⚠️ GraphQL Introspection Enabled</h3>
+    <p>This GraphQL endpoint has introspection enabled in production!</p>
+    <p><strong>Objective:</strong> Use introspection to discover admin schema types</p>
+</div>
+
+<!-- GraphQL Query Interface -->
+<div class="stage-card">
+    <h3>🔍 GraphQL Query Interface</h3>
+    <form id="graphqlForm">
+        <label for="query">GraphQL Query:</label>
+        <textarea id="query" name="query" rows="10" placeholder="Enter your GraphQL query here...">
+{
+  __schema {
+    types {
+      name
+      fields {
+        name
+        type {
+          name
+        }
+      }
+    }
+  }
+}
+        </textarea>
+
+        <div style="margin: 10px 0;">
+            <label for="auth_header">Authorization Header (optional):</label>
+            <input type="text" id="auth_header" name="auth_header" placeholder="Bearer your_token_here">
+        </div>
+
+        <button type="submit" class="btn">Execute Query</button>
+    </form>
+</div>
+
+<!-- Introspection Examples -->
+<div class="vulnerability">
+    <h3>🕷️ Introspection Query Examples</h3>
+    <p>Try these queries to discover schema information:</p>
+    <div style="margin: 10px 0;">
+        <button onclick="loadIntrospectionQuery()" class="btn">Basic Schema Introspection</button>
+        <button onclick="loadTypeQuery()" class="btn">Admin Types Discovery</button>
+        <button onclick="loadSecretsQuery()" class="btn">Admin Secrets Query</button>
+    </div>
+</div>
+
+<!-- Query Result -->
+<div id="queryResult" style="display: none;" class="stage-card">
+    <h3>📋 Query Result</h3>
+    <div id="resultContent"></div>
+</div>
+
+<!-- Schema Information -->
+<div class="stage-card">
+    <h3>📖 Available Schema (Hint)</h3>
+    <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto;">{{ schema }}</pre>
+</div>
+
+<script>
+function loadIntrospectionQuery() {
+    document.getElementById('query').value = `{
+  __schema {
+    types {
+      name
+      description
+      fields {
+        name
+        description
+        type {
+          name
+        }
+      }
+    }
+  }
+}`;
+}
+
+function loadTypeQuery() {
+    document.getElementById('query').value = `{
+  __type(name: "AdminSecret") {
+    name
+    fields {
+      name
+      type {
+        name
+      }
+    }
+  }
+}`;
+}
+
+function loadSecretsQuery() {
+    document.getElementById('query').value = `{
+  adminSecrets {
+    id
+    name
+    value
+    category
+  }
+}`;
+    document.getElementById('auth_header').value = 'Bearer admin_secret_token_12345';
+}
+
+document.getElementById('graphqlForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const query = document.getElementById('query').value;
+    const authHeader = document.getElementById('auth_header').value;
+
+    try {
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+
+        if (authHeader) {
+            headers['Authorization'] = authHeader;
+        }
+
+        const response = await fetch('/graphql', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ query: query })
+        });
+
+        const result = await response.json();
+
+        // Display result
+        document.getElementById('queryResult').style.display = 'block';
+        let resultHtml = `<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto;">${JSON.stringify(result, null, 2)}</pre>`;
+
+        // Check for introspection success
+        if (query.includes('__schema') || query.includes('__type')) {
+            resultHtml += '<div class="alert alert-success">🎯 GraphQL Introspection successful!</div>';
+        }
+
+        // Check for flag
+        if (result.flag_stage4) {
+            resultHtml += `<div class="flag">🚩 FLAG: ${result.flag_stage4}</div>`;
+            alert('🎉 Stage 4 completed! GraphQL introspection vulnerability exploited!');
+        }
+
+        // Check for admin secrets
+        if (result.data && result.data.adminSecrets) {
+            resultHtml += '<div class="alert alert-success">🔑 Admin secrets discovered! Use these for Stage 5.</div>';
+        }
+
+        document.getElementById('resultContent').innerHTML = resultHtml;
+
+    } catch (error) {
+        document.getElementById('queryResult').style.display = 'block';
+        document.getElementById('resultContent').innerHTML = `<div class="alert alert-danger">Query failed: ${error.message}</div>`;
+    }
+});
+
+// Auto-execute introspection query on load
+window.addEventListener('load', function() {
+    setTimeout(() => {
+        console.log('GraphQL endpoint ready for introspection attacks');
+    }, 1000);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}OAuth CTF Challenge - Home{% endblock %}
+
+{% block content %}
+<h1>🎯 OAuth Security CTF Challenge</h1>
+
+<div class="vulnerability">
+    <h3>⚠️ Educational Purpose Only</h3>
+    <p>This application contains intentional security vulnerabilities for educational purposes. Complete all 5 stages to master OAuth security concepts.</p>
+</div>
+
+<!-- Progress Tracking -->
+<div class="stage-card">
+    <h3>📊 Your Progress</h3>
+    <div class="progress-bar">
+        <div class="progress-fill" style="width: {{ ((progress.stage1|int + progress.stage2|int + progress.stage3|int + progress.stage4|int + progress.stage5|int) / 5 * 100)|round }}%"></div>
+    </div>
+    <p id="progress-info">Completed: {{ (progress.stage1|int + progress.stage2|int + progress.stage3|int + progress.stage4|int + progress.stage5|int) }}/5 stages</p>
+</div>
+
+<!-- Stage 1: SSRF -->
+<div class="stage-card {{ 'stage-completed' if progress.stage1 else '' }}">
+    <h3>🎯 Stage 1: SSRF via OAuth Client Registration</h3>
+    <p><strong>Objective:</strong> Exploit Server-Side Request Forgery in OAuth client registration</p>
+    <p><strong>Target:</strong> <code>/oauth/register</code> endpoint</p>
+    <p><strong>Hint:</strong> Look at the <code>logo_uri</code> parameter</p>
+
+    {% if progress.stage1 %}
+        <div class="flag">🚩 FLAG: {{ flags.stage1 }}</div>
+    {% else %}
+        <a href="{{ url_for('oauth_register') }}" class="btn">Start Stage 1</a>
+    {% endif %}
+</div>
+
+<!-- Stage 2: XSS -->
+<div class="stage-card {{ 'stage-completed' if progress.stage2 else '' }}">
+    <h3>🕷️ Stage 2: XSS in Guestbook System</h3>
+    <p><strong>Objective:</strong> Inject XSS payload to steal admin credentials</p>
+    <p><strong>Target:</strong> Guestbook message system</p>
+    <p><strong>Hint:</strong> Admin bot automatically reviews guestbook entries</p>
+
+    {% if progress.stage2 %}
+        <div class="flag">🚩 FLAG: {{ flags.stage2 }}</div>
+    {% else %}
+        <a href="{{ url_for('guestbook') }}" class="btn">Start Stage 2</a>
+    {% endif %}
+</div>
+
+<!-- Stage 3: PKCE Bypass -->
+<div class="stage-card {{ 'stage-completed' if progress.stage3 else '' }}">
+    <h3>🔑 Stage 3: PKCE Bypass & JWT Manipulation</h3>
+    <p><strong>Objective:</strong> Bypass PKCE protection and escalate token privileges</p>
+    <p><strong>Target:</strong> <code>/oauth/token</code> endpoint</p>
+    <p><strong>Hint:</strong> Try PKCE downgrade and refresh token scope escalation</p>
+
+    {% if progress.stage3 %}
+        <div class="flag">🚩 FLAG: {{ flags.stage3 }}</div>
+    {% else %}
+        <div class="vulnerability">
+            <p>First complete OAuth registration (Stage 1) to get client credentials</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Stage 4: GraphQL -->
+<div class="stage-card {{ 'stage-completed' if progress.stage4 else '' }}">
+    <h3>📊 Stage 4: GraphQL Introspection</h3>
+    <p><strong>Objective:</strong> Use GraphQL introspection to discover admin endpoints</p>
+    <p><strong>Target:</strong> <code>/graphql</code> endpoint</p>
+    <p><strong>Hint:</strong> Try introspection queries like <code>__schema</code></p>
+
+    {% if progress.stage4 %}
+        <div class="flag">🚩 FLAG: {{ flags.stage4 }}</div>
+    {% else %}
+        <a href="{{ url_for('graphql') }}" class="btn">Start Stage 4</a>
+    {% endif %}
+</div>
+
+<!-- Stage 5: Admin Access -->
+<div class="stage-card {{ 'stage-completed' if progress.stage5 else '' }}">
+    <h3>👑 Stage 5: Admin Dashboard Access</h3>
+    <p><strong>Objective:</strong> Access the admin dashboard and retrieve the final flag</p>
+    <p><strong>Target:</strong> <code>/admin/dashboard</code> endpoint</p>
+    <p><strong>Hint:</strong> Use stolen admin credentials or escalated JWT tokens</p>
+
+    {% if progress.stage5 %}
+        <div class="flag">🚩 FINAL FLAG: {{ flags.final }}</div>
+    {% else %}
+        <div class="vulnerability">
+            <p>Complete previous stages to gather admin credentials</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Quick Actions -->
+<div class="stage-card">
+    <h3>🛠️ Quick Actions</h3>
+    <a href="{{ url_for('progress') }}" class="btn">View Detailed Progress</a>
+    <a href="{{ url_for('hints') }}" class="btn">Get Hints</a>
+    <a href="{{ url_for('reset') }}" class="btn btn-danger">Reset Progress</a>
+</div>
+
+<!-- Attack Chain Overview -->
+<div class="stage-card">
+    <h3>🔗 Attack Chain Overview</h3>
+    <ol>
+        <li><strong>SSRF Discovery:</strong> Use OAuth client registration to access internal services</li>
+        <li><strong>XSS Injection:</strong> Plant malicious script in guestbook to steal admin session</li>
+        <li><strong>PKCE Bypass:</strong> Downgrade PKCE protection and escalate token scope</li>
+        <li><strong>GraphQL Recon:</strong> Discover admin endpoints through schema introspection</li>
+        <li><strong>Admin Takeover:</strong> Access protected admin dashboard with stolen/escalated credentials</li>
+    </ol>
+</div>
+
+<script>
+    // Auto-refresh progress every 10 seconds
+    setInterval(() => {
+        fetch('/progress')
+            .then(response => response.json())
+            .then(data => {
+                if (data.completed_stages > 0) {
+                    location.reload();
+                }
+            });
+    }, 10000);
+</script>
+{% endblock %}

