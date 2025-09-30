@@ -54,9 +54,9 @@ FLAGS = {
 try:
     r = redis.from_url(REDIS_URL, decode_responses=True)
     r.ping()
-    print("✅ Connected to Redis")
+    print("[+] Connected to Redis")
 except Exception as e:
-    print(f"❌ Redis connection failed: {e}")
+    print(f"[-] Redis connection failed: {e}")
     # Use mock Redis for development
     class MockRedis:
         def __init__(self):
@@ -166,7 +166,7 @@ def track_stage_progress(client_id, stage):
     # Store completion timestamp
     stage_key = f"client:{client_id}:stage{stage}"
     r.set(stage_key, int(time.time()))
-    print(f"✅ Stage {stage} completed for client {client_id}")
+    print(f"[+] Stage {stage} completed for client {client_id}")
 
 def get_client_progress(client_id):
     """Get completion status for all stages using Redis key structure"""
@@ -417,7 +417,7 @@ GUESTBOOK_TEMPLATE = """
     <p><a href="/">← Back to Challenge</a></p>
 
     <div class="vulnerability">
-        <strong>⚠️ Vulnerability Notice:</strong> This guestbook renders HTML without escaping!<br>
+        <strong>[WARN] Vulnerability Notice:</strong> This guestbook renders HTML without escaping!<br>
         Admin regularly checks new messages and has access to authorization codes.
     </div>
 
@@ -621,6 +621,80 @@ def guestbook_post():
             })
 
     return jsonify({'message': 'Message posted successfully'})
+
+@app.route('/api/community/posts', methods=['GET'])
+def get_community_posts():
+    """Get community forum posts (reuses guestbook data)"""
+    try:
+        message_data = r.lrange('guestbook_messages', 0, 19)  # Last 20 messages
+        posts = []
+
+        for i, msg_json in enumerate(message_data):
+            try:
+                msg = json.loads(msg_json)
+                post = {
+                    'id': msg.get('id', str(i)),
+                    'title': f"Discussion: {msg['content'][:50]}..." if len(msg['content']) > 50 else f"Discussion: {msg['content']}",
+                    'content': msg['content'],
+                    'author': msg['author'],
+                    'author_avatar': 'https://via.placeholder.com/40',
+                    'category': 'general',
+                    'created_at': msg.get('timestamp', datetime.now().isoformat()),
+                    'replies_count': 0,
+                    'likes_count': 0,
+                    'is_pinned': False,
+                    'is_answered': False,
+                    'tags': []
+                }
+                posts.append(post)
+            except:
+                continue
+
+        return jsonify(posts)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/community/posts', methods=['POST'])
+def create_community_post():
+    """Stage 2: Create forum post (XSS vulnerability)"""
+    data = request.get_json()
+
+    if not data or 'title' not in data or 'content' not in data:
+        return jsonify({'error': 'title and content required'}), 400
+
+    post_data = {
+        'author': 'current_user',  # VULN: No authentication
+        'content': data['content'],  # VULN: No sanitization - XSS possible
+        'title': data['title'],  # VULN: No sanitization
+        'timestamp': datetime.now().isoformat(),
+        'id': str(uuid.uuid4()),
+        'category': data.get('category', 'general')
+    }
+
+    # Store as guestbook message for compatibility
+    r.lpush('guestbook_messages', json.dumps(post_data))
+
+    # Check for XSS payload and mark stage as completed
+    content_lower = data['content'].lower()
+    if any(xss in content_lower for xss in ['<script>', 'onerror=', 'onload=', 'auth-code', 'document.cookie']):
+        client_id = data.get('client_id')
+
+        if client_id:
+            # Mark Stage 2 completion
+            r.set(f"client:{client_id}:stage2", int(time.time()))
+            print(f"🚨 XSS payload detected in forum post for client {client_id}: {data['content']}")
+
+            return jsonify({
+                'id': post_data['id'],
+                'message': 'Post created successfully',
+                'xss_detected': True,
+                'flag': FLAGS['stage2']
+            })
+
+    return jsonify({
+        'id': post_data['id'],
+        'message': 'Post created successfully'
+    })
 
 @app.route('/app/callback')
 def oauth_callback():
@@ -1071,9 +1145,9 @@ def health_check():
     })
 
 if __name__ == '__main__':
-    print("🚀 OAuth CTF Challenge starting...")
-    print("🎯 Access the challenge at: http://localhost:5000")
-    print("📋 Stages: SSRF → XSS → PKCE/JWT → GraphQL → Scope Escalation")
-    print("🏆 Final goal: Capture CTF{oauth_chain_master_2025}")
+    print("[START] OAuth CTF Challenge starting...")
+    print("[INFO] Access the challenge at: http://localhost:5000")
+    print("[INFO] Stages: SSRF -> XSS -> PKCE/JWT -> GraphQL -> Scope Escalation")
+    print("[GOAL] Final goal: Capture CTF{oauth_chain_master_2025}")
 
     app.run(host='0.0.0.0', port=5000, debug=True)

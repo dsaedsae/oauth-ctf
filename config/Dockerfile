@@ -7,9 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
-COPY app.py admin_bot.py ./
-COPY templates templates/
-COPY static static/
+COPY . .
 
 # Expose only port 5000 (no other ports!)
 EXPOSE 5000
